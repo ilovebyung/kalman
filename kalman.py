@@ -23,44 +23,11 @@ class KalmanFilter:
         predicted = self.kf.predict()
         return predicted
 
-# Detect an object
+# Detect an object with BackgroundSubtractorKNN
 
 
-def detect(frame):
-
-    # Set threshold to filter only green color & Filter it
-    lowerBound = np.array([130, 30, 0], dtype="uint8")
-    upperBound = np.array([255, 255, 90], dtype="uint8")
-    greenMask = cv2.inRange(frame, lowerBound, upperBound)
-
-    # Dilate
-    kernel = np.ones((5, 5), np.uint8)
-    greenMaskDilated = cv2.dilate(greenMask, kernel)
-    #cv2.imshow('Thresholded', greenMaskDilated)
-
-    # Find ball blob as it is the biggest green object in the frame
-    [nLabels, labels, stats, centroids] = cv2.connectedComponentsWithStats(
-        greenMaskDilated, 8, cv2.CV_32S)
-
-    # First biggest contour is image border always, Remove it
-    stats = np.delete(stats, (0), axis=0)
-    try:
-        maxBlobIdx_i, maxBlobIdx_j = np.unravel_index(
-            stats.argmax(), stats.shape)
-
-    # This is our ball coords that needs to be tracked
-        x = stats[maxBlobIdx_i, 0] + (stats[maxBlobIdx_i, 2]/2)
-        y = stats[maxBlobIdx_i, 1] + (stats[maxBlobIdx_i, 3]/2)
-        return [x, y]
-    except:
-        pass
-
-    return [0, 0]
-
-
-## knn ##
 bg_subtractor = cv2.createBackgroundSubtractorKNN(detectShadows=True)
-history_length = 20
+history_length = 100
 bg_subtractor.setHistory(history_length)
 erode_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 5))
 dilate_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (17, 11))
@@ -72,8 +39,8 @@ if(cap.isOpened() == False):
     print('Cannot open input')
     pass
 
-width = int(cap.get(3))
-height = int(cap.get(4))
+# width = int(cap.get(3))
+# height = int(cap.get(4))
 
 # Create Kalman Filter Object
 kalman = KalmanFilter()
@@ -93,11 +60,11 @@ while(cap.isOpened()):
                                           cv2.CHAIN_APPROX_SIMPLE)
 
         for c in contours:
-            if cv2.contourArea(c) > 1000:
+            if cv2.contourArea(c) > 2000:
                 x, y, w, h = cv2.boundingRect(c)
                 cv2.rectangle(frame, (x, y), (x+w, y+h), (255, 255, 0), 2)
 
-                [x, y] = detect(frame)
+                # [x, y] = detect(frame)
                 predictedCoords = kalman.estimate(x, y)
 
                 # Draw Actual coords from segmentation
