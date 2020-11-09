@@ -60,11 +60,13 @@ def detect(frame):
 
 ## knn ##
 bg_subtractor = cv2.createBackgroundSubtractorKNN(detectShadows=True)
+history_length = 20
+bg_subtractor.setHistory(history_length)
 erode_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 5))
-dilate_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 5))
+dilate_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (17, 11))
 
 # Performs required image processing to get object coordinated in the video
-cap = cv2.VideoCapture('traffic.mp4')
+cap = cv2.VideoCapture('heron.mp4')
 
 if(cap.isOpened() == False):
     print('Cannot open input')
@@ -76,6 +78,7 @@ height = int(cap.get(4))
 # Create Kalman Filter Object
 kalman = KalmanFilter()
 predictedCoords = np.zeros((2, 1), np.float32)
+
 
 while(cap.isOpened()):
     ret, frame = cap.read()
@@ -94,25 +97,25 @@ while(cap.isOpened()):
                 x, y, w, h = cv2.boundingRect(c)
                 cv2.rectangle(frame, (x, y), (x+w, y+h), (255, 255, 0), 2)
 
-        [x, y] = detect(frame)
-        predictedCoords = kalman.estimate(x, y)
+                [x, y] = detect(frame)
+                predictedCoords = kalman.estimate(x, y)
 
-        # Draw Actual coords from segmentation
-        cv2.circle(frame, (int(x), int(y)),
-                   20, [0, 0, 255], 2, 8)
-        cv2.line(frame, (int(x), int(y + 20)),
-                 (int(x + 50), int(y + 20)), [100, 100, 255], 2, 8)
-        cv2.putText(frame, "Actual", (int(x + 50), int(y + 20)),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, [50, 200, 250])
+                # Draw Actual coords from segmentation
+                cv2.circle(frame, (int(x), int(y)),
+                           20, [0, 0, 255], 2, 8)
+                cv2.line(frame, (int(x), int(y + 20)),
+                         (int(x + 50), int(y + 20)), [100, 100, 255], 2, 8)
+                cv2.putText(frame, "Actual", (int(x + 50), int(y + 20)),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, [50, 200, 250])
 
-        # Draw Kalman Filter Predicted output
-        cv2.circle(frame, (int(predictedCoords[0]), int(predictedCoords[1])), 20, [
-            0, 255, 255], 2, 8)
-        cv2.line(frame, (int(predictedCoords[0]) + 16, int(predictedCoords[1]) - 15),
-                 (int(predictedCoords[0]) + 50, int(predictedCoords[1]) - 30), [100, 10, 255], 2, 8)
-        cv2.putText(frame, "Predicted", (int(predictedCoords[0] + 50), int(
-            predictedCoords[1] - 30)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, [50, 200, 250])
-        cv2.imshow('Input', frame)
+                # Draw Kalman Filter Predicted output
+                cv2.circle(frame, (int(predictedCoords[0]), int(predictedCoords[1])), 20, [
+                    0, 255, 255], 2, 8)
+                cv2.line(frame, (int(predictedCoords[0]) + 16, int(predictedCoords[1]) - 15),
+                         (int(predictedCoords[0]) + 50, int(predictedCoords[1]) - 30), [100, 10, 255], 2, 8)
+                cv2.putText(frame, "Predicted", (int(predictedCoords[0] + 50), int(
+                    predictedCoords[1] - 30)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, [50, 200, 250])
+                cv2.imshow('Input', frame)
 
         if (cv2.waitKey(300) & 0xFF == ord('q')):
             break
@@ -122,18 +125,3 @@ while(cap.isOpened()):
 
 cap.release()
 cv2.destroyAllWindows()
-
-# Segment the green ball in a given frame
-
-
-# # Main Function
-# def main():
-
-#     processImg = ProcessImage()
-#     processImg.DetectObject()
-
-
-# if __name__ == "__main__":
-#     main()
-
-# print('Program Completed!')
