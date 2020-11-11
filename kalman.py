@@ -25,6 +25,7 @@ class KalmanFilter:
 bg_subtractor = cv2.createBackgroundSubtractorKNN(detectShadows=True)
 history_length = 20
 bg_subtractor.setHistory(history_length)
+# remove image sensor noise
 erode_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 5))
 dilate_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (17, 11))
 
@@ -51,6 +52,8 @@ while success:
 
     fg_mask = bg_subtractor.apply(frame)
     _, thresh = cv2.threshold(fg_mask, 244, 255, cv2.THRESH_BINARY)
+
+    # Removing image sensor noise
     cv2.erode(thresh, erode_kernel, thresh, iterations=2)
     cv2.dilate(thresh, dilate_kernel, thresh, iterations=2)
 
@@ -74,25 +77,25 @@ while success:
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, [50, 200, 250])
 
             # Draw Kalman Filter Predicted output
-            # cv2.circle(frame, (int(predictions[0]), int(predictions[1])), 20, [
-            #     0, 255, 255], 2, 8)
-            # cv2.line(frame, (int(predictions[0]) + 16, int(predictions[1]) - 15),
-            #          (int(predictions[0]) + 50, int(predictions[1]) - 30), [100, 10, 255], 2, 8)
-            cv2.putText(frame, "Predicted xv, yv", (int(predictions[2] + 50), int(
-                predictions[3] - 30)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, [50, 200, 250])
+            cv2.circle(frame, (int(predictions[0]), int(predictions[1])), 20, [
+                0, 255, 255], 2, 8)
+            cv2.line(frame, (int(predictions[0]) + 16, int(predictions[1]) - 15),
+                     (int(predictions[0]) + 50, int(predictions[1]) - 30), [100, 10, 255], 2, 8)
+            cv2.putText(frame, f"Predicted xv {int(predictions[2])}, yv {int(predictions[3])} ", (int(predictions[0] + 50), int(
+                predictions[1] - 30)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, [50, 200, 250])
             cv2.imshow('Input', frame)
 
             # Set file name as 'MM/DD/YY HH:MM:SS'
-            out = datetime.datetime.now().strftime("%x %X")
+            # out = datetime.datetime.now().strftime("%x %X")
 
             # write the frame
-            out = cv2.VideoWriter(f'{out}.avi', fourcc,
-                                  20.0, (fwidth, fheight))
+            out = cv2.VideoWriter('out.avi', fourcc, 20.0, (fwidth, fheight))
             out.write(frame)
 
     k = cv2.waitKey(30)
     if k == 27:  # Escape
         break
+    success, frame = cap.read()
 
 cap.release()
 cv2.destroyAllWindows()
