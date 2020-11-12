@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 import datetime
+import os
 
 # --------------------------------------------------------------------
 # Kalman Filter predicts position and velocity
@@ -38,7 +39,7 @@ fshape = frame.shape
 fheight = fshape[0]
 fwidth = fshape[1]
 print(f'Width:{fwidth}, Height:{fheight}')
-fourcc = cv2.VideoWriter_fourcc(*'XVID')
+# fourcc = cv2.VideoWriter_fourcc(*'XVID')
 
 # Create Kalman Filter Object
 kalman = KalmanFilter()
@@ -51,7 +52,7 @@ while success:
     # --------------------------------------------------------------------
 
     fg_mask = bg_subtractor.apply(frame)
-    _, thresh = cv2.threshold(fg_mask, 244, 255, cv2.THRESH_BINARY)
+    ret, thresh = cv2.threshold(fg_mask, 244, 255, cv2.THRESH_BINARY)
 
     # Removing image sensor noise
     cv2.erode(thresh, erode_kernel, thresh, iterations=2)
@@ -71,26 +72,25 @@ while success:
             # Draw Actual coords from segmentation
             cv2.circle(frame, (int(x), int(y)),
                        20, [0, 0, 255], 2, 8)
-            cv2.line(frame, (int(x), int(y + 20)),
-                     (int(x + 50), int(y + 20)), [100, 100, 255], 2, 8)
+            # cv2.line(frame, (int(x), int(y + 20)),
+            #          (int(x + 50), int(y + 20)), [100, 100, 255], 2, 8)
             cv2.putText(frame, "Actual", (int(x + 50), int(y + 20)),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, [50, 200, 250])
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, [255, 0, 0])
 
             # Draw Kalman Filter Predicted output
             cv2.circle(frame, (int(predictions[0]), int(predictions[1])), 20, [
                 0, 255, 255], 2, 8)
-            cv2.line(frame, (int(predictions[0]) + 16, int(predictions[1]) - 15),
-                     (int(predictions[0]) + 50, int(predictions[1]) - 30), [100, 10, 255], 2, 8)
+            # cv2.line(frame, (int(predictions[0]) + 16, int(predictions[1]) - 15),
+            #          (int(predictions[0]) + 50, int(predictions[1]) - 30), [100, 10, 255], 2, 8)
             cv2.putText(frame, f"Predicted xv {int(predictions[2])}, yv {int(predictions[3])} ", (int(predictions[0] + 50), int(
                 predictions[1] - 30)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, [50, 200, 250])
             cv2.imshow('Input', frame)
 
-            # Set file name as 'MM/DD/YY HH:MM:SS'
-            # out = datetime.datetime.now().strftime("%x %X")
+            # Set file name as 'YYMMDD HHMM'
+            filename = datetime.datetime.now().strftime("%Y%m%d%H%M")
 
             # write the frame
-            out = cv2.VideoWriter('out.avi', fourcc, 20.0, (fwidth, fheight))
-            out.write(frame)
+            cv2.imwrite(f'{filename}.jpg', frame)
 
     k = cv2.waitKey(30)
     if k == 27:  # Escape
