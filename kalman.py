@@ -1,7 +1,6 @@
 import cv2
 import numpy as np
 import datetime
-import os
 
 # --------------------------------------------------------------------
 # Kalman Filter predicts position and velocity
@@ -22,28 +21,40 @@ class KalmanFilter:
         return predicted
 
 
+# Create Kalman Filter Object
+kalman = KalmanFilter()
+predictions = np.zeros((2, 1), np.float32)
+
 # set parameters for BackgroundSubtractorKNN
 bg_subtractor = cv2.createBackgroundSubtractorKNN(detectShadows=True)
 history_length = 20
 bg_subtractor.setHistory(history_length)
 # remove image sensor noise
-erode_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 5))
-dilate_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (17, 11))
+erode_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+dilate_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
 
 # capture input
-cap = cv2.VideoCapture('heron.mp4')
+cap = cv2.VideoCapture('70_1.avi')
 success, frame = cap.read()
 
-# Define the codec and create VideoWriter object
+# frame demension
 fshape = frame.shape
 fheight = fshape[0]
 fwidth = fshape[1]
-print(f'Width:{fwidth}, Height:{fheight}')
-# fourcc = cv2.VideoWriter_fourcc(*'XVID')
 
-# Create Kalman Filter Object
-kalman = KalmanFilter()
-predictions = np.zeros((2, 1), np.float32)
+# cut a frame in half
+# q1 = int(fshape[0] * 1/4)
+# q3 = int(fshape[0] * 3/4)
+# roi = frame[q1:q3, :]
+
+fps = int(cap.get(cv2.CAP_PROP_FPS))
+print(f'Width:{fwidth}, Height:{fheight}, FPS:{fps}')
+
+# Define the codec and create VideoWriter object
+fourcc = cv2.VideoWriter_fourcc(*'XVID')
+
+# write the frame
+out = cv2.VideoWriter('out.avi', fourcc, 20.0, (fwidth, fheight))
 
 while success:
 
@@ -52,7 +63,7 @@ while success:
     # --------------------------------------------------------------------
 
     fg_mask = bg_subtractor.apply(frame)
-    ret, thresh = cv2.threshold(fg_mask, 244, 255, cv2.THRESH_BINARY)
+    ret, thresh = cv2.threshold(fg_mask, 100, 255, cv2.THRESH_BINARY)
 
     # Removing image sensor noise
     cv2.erode(thresh, erode_kernel, thresh, iterations=2)
@@ -61,36 +72,35 @@ while success:
     contours, hier = cv2.findContours(thresh, cv2.RETR_EXTERNAL,
                                       cv2.CHAIN_APPROX_SIMPLE)
 
-    for c in contours:
+    for detected in contours:
         # Set the valid size
-        if cv2.contourArea(c) > 2000:
-            x, y, w, h = cv2.boundingRect(c)
+        size = cv2.contourArea(detected)
+
+        if (10 < size < 4000):
+            x, y, w, h = cv2.boundingRect(detected)
             cv2.rectangle(frame, (x, y), (x+w, y+h), (255, 255, 0), 2)
+            print(f'contourArea: {cv2.contourArea(detected)}')
 
             predictions = kalman.estimate(x, y)
 
             # Draw Actual coords from segmentation
             cv2.circle(frame, (int(x), int(y)),
                        20, [0, 0, 255], 2, 8)
-            # cv2.line(frame, (int(x), int(y + 20)),
-            #          (int(x + 50), int(y + 20)), [100, 100, 255], 2, 8)
-            cv2.putText(frame, "Actual", (int(x + 50), int(y + 20)),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, [255, 0, 0])
+            cv2.putText(frame, f"Actual x {x}, y {y}", (int(x + 50), int(y + 20)),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, [0, 0, 255])
 
             # Draw Kalman Filter Predicted output
-            cv2.circle(frame, (int(predictions[0]), int(predictions[1])), 20, [
-                0, 255, 255], 2, 8)
-            # cv2.line(frame, (int(predictions[0]) + 16, int(predictions[1]) - 15),
-            #          (int(predictions[0]) + 50, int(predictions[1]) - 30), [100, 10, 255], 2, 8)
-            cv2.putText(frame, f"Predicted xv {int(predictions[2])}, yv {int(predictions[3])} ", (int(predictions[0] + 50), int(
-                predictions[1] - 30)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, [50, 200, 250])
+            cv2.circle(frame, (int(predictions[0]), int(predictions[1])), 20,
+                       [0, 255, 255], 2, 8)
+            cv2.putText(frame, f"Predicted xv {int(predictions[2])}, yv {int(predictions[3])} ", (int(predictions[0]), int(
+                predictions[1])), cv2.FONT_HERSHEY_SIMPLEX, 0.5, [0, 255, 255])
             cv2.imshow('Input', frame)
 
-            # Set file name as 'YYMMDD HHMM'
-            filename = datetime.datetime.now().strftime("%Y%m%d%H%M")
+            # Set file name as 'MM/DD/YY HH:MM:SS'
+            # out = datetime.datetime.now().strftime("%x %X")
 
             # write the frame
-            cv2.imwrite(f'{filename}.jpg', frame)
+            out.write(frame)
 
     k = cv2.waitKey(30)
     if k == 27:  # Escape
