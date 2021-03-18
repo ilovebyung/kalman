@@ -34,7 +34,7 @@ erode_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
 dilate_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
 
 # capture input
-cap = cv2.VideoCapture('70_1.avi')
+cap = cv2.VideoCapture(0)
 success, frame = cap.read()
 
 # frame demension
@@ -76,7 +76,7 @@ while success:
         # Set the valid size
         size = cv2.contourArea(detected)
 
-        if (10 < size < 4000):
+        if (size > 4000):
             x, y, w, h = cv2.boundingRect(detected)
             cv2.rectangle(frame, (x, y), (x+w, y+h), (255, 255, 0), 2)
             print(f'contourArea: {cv2.contourArea(detected)}')
